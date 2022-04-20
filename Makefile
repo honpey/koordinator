@@ -81,11 +81,15 @@ test: manifests generate fmt vet envtest ## Run tests.
 ##@ Build
 
 .PHONY: build
-build: generate fmt vet lint build-koordlet build-koord-manager build-koord-scheduler
+build: generate fmt vet lint build-koordlet build-koord-manager build-koord-scheduler runtime-manager
 
 .PHONY: build-koordlet
 build-koordlet: ## Build koordlet binary.
 	go build -o bin/koordlet cmd/koordlet/main.go
+
+.PHONY: runtime-manager
+runtime-manager: ## Build runtime-manager binary.
+	go build -o bin/runtime-manager cmd/runtime-manager/main.go
 
 .PHONY: build-koord-manager
 build-koord-manager: ## Build koord-manager binary.

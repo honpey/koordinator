@@ -1,5 +1,7 @@
 package config
 
+import "strings"
+
 type FailurePolicyType string
 
 const (
@@ -32,4 +34,71 @@ type RuntimeHookConfig struct {
 
 type RuntimeHookConfigs struct {
 	configs []RuntimeHookConfig
+}
+
+type RuntimeRequestPath string
+
+const (
+	RunPodSandbox            RuntimeRequestPath = "RunPodSandbox"
+	StartContainer           RuntimeRequestPath = "StartContainer"
+	UpdateContainerResources RuntimeRequestPath = "UpdateContainerResources"
+	StopContainer            RuntimeRequestPath = "StopContainer"
+	NoneRuntimeHookPath      RuntimeRequestPath = "NoneRuntimeHookPath"
+)
+
+func (ht RuntimeHookType) OccursOn(path RuntimeRequestPath) bool {
+	switch ht {
+	case PreRunPodSandbox:
+		if path == RunPodSandbox {
+			return true
+		}
+	case PreStartContainer:
+		if path == StartContainer {
+			return true
+		}
+	case PostStartContainer:
+		if path == StartContainer {
+			return true
+		}
+	case PreUpdateContainerResources:
+		if path == UpdateContainerResources {
+			return true
+		}
+	case PostStopContainer:
+		if path == StopContainer {
+			return true
+		}
+	}
+	return false
+}
+
+func (hp RuntimeRequestPath) PreHookType() RuntimeHookType {
+	if hp == RunPodSandbox {
+		return PreRunPodSandbox
+	}
+	return NoneRuntimeHookType
+}
+
+func (hp RuntimeRequestPath) PostHookType() RuntimeHookType {
+	if hp == RunPodSandbox {
+		return NoneRuntimeHookType
+	}
+	return NoneRuntimeHookType
+}
+
+type RuntimeHookStage string
+
+const (
+	PreHook     RuntimeHookStage = "PreHook"
+	PostHook    RuntimeHookStage = "PostHook"
+	UnknownHook RuntimeHookStage = "UnknownHook"
+)
+
+func (ht RuntimeHookType) HookStage() RuntimeHookStage {
+	if strings.HasPrefix(string(ht), "Pre") {
+		return PreHook
+	} else if strings.HasPrefix(string(ht), "Post") {
+		return PostHook
+	}
+	return UnknownHook
 }

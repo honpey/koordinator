@@ -33,6 +33,10 @@ type RuntimeHookConfigItem struct {
 	*RuntimeHookConfig
 }
 
+func (m *Manager) GetAllHook() []*RuntimeHookConfig {
+	return []*RuntimeHookConfig{}
+}
+
 func (m *Manager) getAllRegisteredFiles() []string {
 	var files []string
 	m.Lock()
