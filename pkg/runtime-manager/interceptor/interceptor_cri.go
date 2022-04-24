@@ -3,6 +3,7 @@ package interceptor
 import (
 	"context"
 	"fmt"
+	"k8s.io/klog/v2"
 	"net"
 	"reflect"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/config"
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
-	"k8s.io/klog/v2"
 )
 
 func (ci *CriInterceptor) getHookType(serviceType RuntimeServiceType) config.RuntimeRequestPath {
@@ -113,8 +113,8 @@ func (ci *CriInterceptor) interceptRuntimeRequest(serviceType RuntimeServiceType
 	}
 
 	res, err := handler(ctx, request)
-
 	klog.Infof("%v %v", res, err)
+	// should record the pod infoif
 
 	if postHookType := requestPath.PostHookType(); postHookType != config.NoneRuntimeHookType {
 		if hookRequest, err := ci.generateHookRequest(request, requestPath); err != nil {
@@ -124,8 +124,7 @@ func (ci *CriInterceptor) interceptRuntimeRequest(serviceType RuntimeServiceType
 
 		}
 	}
-
-	return handler(ctx, request)
+	return res, err
 }
 
 func dialer(ctx context.Context, addr string) (net.Conn, error) {

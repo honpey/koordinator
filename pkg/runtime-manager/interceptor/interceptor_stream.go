@@ -18,6 +18,7 @@ import (
 	"os"
 
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/dispatcher"
+	meta "github.com/koordinator-sh/koordinator/pkg/runtime-manager/metadata"
 )
 
 const (
@@ -29,11 +30,13 @@ type CriInterceptor struct {
 	director      StreamDirector
 	backendConn   *grpc.ClientConn
 	runtimeClient runtimeapi.RuntimeServiceClient
+	MetaManager   *meta.MetaManager
 }
 
 func NewCriInterceptor(dispatcher *dispatcher.RuntimeDispatcher) *CriInterceptor {
 	criInterceptor := &CriInterceptor{
-		dispatcher: dispatcher,
+		dispatcher:  dispatcher,
+		MetaManager: meta.NewMetaManager(),
 	}
 	return criInterceptor
 }

@@ -69,6 +69,7 @@ func (rd *RuntimeDispatcher) Dispatch(ctx context.Context, runtimeRequestPath co
 			client, err := rd.cm.RuntimeHookClient(utils.HookServerPath{
 				Path: hookServer.RemoteEndpoint,
 			})
+
 			if err != nil {
 				klog.Infof("fail to create the client %v", err)
 				continue

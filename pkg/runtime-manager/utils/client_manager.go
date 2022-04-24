@@ -24,7 +24,6 @@ const (
 )
 
 // TODO: garbage client gc
-
 func NewClientManager() (*HookServerClientManager, error) {
 	cache := lru.New(defaultCacheSize)
 	return &HookServerClientManager{
