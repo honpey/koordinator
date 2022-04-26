@@ -1,4 +1,4 @@
-package metadata
+package store
 
 import (
 	bolt "go.etcd.io/bbolt"

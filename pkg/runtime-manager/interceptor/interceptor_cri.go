@@ -2,128 +2,54 @@ package interceptor
 
 import (
 	"context"
-	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/resource-executor"
 	"k8s.io/klog/v2"
 	"net"
-	"reflect"
 	"time"
 
-	"github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/config"
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
 
-func (ci *CriInterceptor) getHookType(serviceType RuntimeServiceType) config.RuntimeRequestPath {
+func (ci *CriInterceptor) getRuntimeHookInfo(serviceType RuntimeServiceType) (config.RuntimeRequestPath,
+	resource_executor.RuntimeResourceType) {
 	switch serviceType {
 	case RunPodSandbox:
-		return config.RunPodSandbox
+		return config.RunPodSandbox, resource_executor.RuntimePodResource
 	case StartContainer:
-		return config.StartContainer
+		return config.StartContainer, resource_executor.RuntimeContainerResource
 	case StopContainer:
-		return config.StopContainer
+		return config.StopContainer, resource_executor.RuntimeContainerResource
 	case UpdateContainerResources:
-		return config.UpdateContainerResources
+		return config.UpdateContainerResources, resource_executor.RuntimeContainerResource
 	}
-	return config.NoneRuntimeHookPath
-}
-
-func (ci *CriInterceptor) transfer(r *runtimeapi.LinuxContainerResources) *v1alpha1.LinuxContainerResources {
-	linuxResource := &v1alpha1.LinuxContainerResources{
-		CpuPeriod:              r.GetCpuPeriod(),
-		CpuQuota:               r.GetCpuQuota(),
-		CpuShares:              r.GetCpuShares(),
-		MemoryLimitInBytes:     r.GetMemoryLimitInBytes(),
-		OomScoreAdj:            r.GetOomScoreAdj(),
-		CpusetCpus:             r.GetCpusetCpus(),
-		CpusetMems:             r.GetCpusetMems(),
-		Unified:                r.GetUnified(),
-		MemorySwapLimitInBytes: r.GetMemorySwapLimitInBytes(),
-	}
-
-	for _, item := range r.GetHugepageLimits() {
-		linuxResource.HugepageLimits = append(linuxResource.HugepageLimits, &v1alpha1.HugepageLimit{
-			PageSize: item.GetPageSize(),
-			Limit:    item.GetLimit(),
-		})
-	}
-
-	return linuxResource
-}
-
-func (ci *CriInterceptor) generateHookRequest(request interface{},
-	hookRequestPath config.RuntimeRequestPath) (interface{}, error) {
-	switch hookRequestPath {
-	case config.RunPodSandbox:
-		runPodSandboxRequest, ok := request.(*runtimeapi.RunPodSandboxRequest)
-		if !ok {
-			klog.Errorf("fail to transfer %v to runtimeapi.RunPodSandboxRequest", reflect.TypeOf(request))
-			return nil, fmt.Errorf("hh")
-		}
-		return &v1alpha1.RunPodSandboxHookRequest{
-			PodMeta: &v1alpha1.PodSandboxMetadata{
-				Name:      runPodSandboxRequest.GetConfig().GetMetadata().GetName(),
-				Namespace: runPodSandboxRequest.GetConfig().GetMetadata().GetNamespace(),
-			},
-			RuntimeHandler: runPodSandboxRequest.GetRuntimeHandler(),
-			Annotations:    runPodSandboxRequest.GetConfig().GetAnnotations(),
-			Labels:         runPodSandboxRequest.GetConfig().GetLabels(),
-			CgroupParent:   runPodSandboxRequest.GetConfig().GetLinux().GetCgroupParent(),
-		}, nil
-	case config.StartContainer:
-		_, ok := request.(*runtimeapi.StartContainerRequest)
-		if !ok {
-			klog.Errorf("fail to transfer %v to runtimeapi.RunPodSandboxRequest", reflect.TypeOf(request))
-			return nil, fmt.Errorf("hh")
-		}
-		return &v1alpha1.ContainerResourceHookRequest{
-			// TODO: add the pod/containerd  info when container create
-		}, nil
-
-	case config.StopContainer:
-		_, ok := request.(*runtimeapi.StopContainerRequest)
-		if !ok {
-
-			klog.Errorf("fail to transfer %v to runtimeapi.RunPodSandboxRequest", reflect.TypeOf(request))
-			return nil, fmt.Errorf("hh")
-		}
-		return &v1alpha1.ContainerResourceHookRequest{}, nil
-	case config.UpdateContainerResources:
-		_, ok := request.(*runtimeapi.UpdateContainerResourcesRequest)
-		if !ok {
-			klog.Errorf("fail to transfer %v to runtimeapi.RunPodSandboxRequest", reflect.TypeOf(request))
-			return nil, fmt.Errorf("hh")
-		}
-		return &v1alpha1.ContainerResourceHookRequest{}, nil
-	}
-	return nil, fmt.Errorf("fail")
+	return config.NoneRuntimeHookPath, resource_executor.RuntimeNoopResource
 }
 
 func (ci *CriInterceptor) interceptRuntimeRequest(serviceType RuntimeServiceType,
 	ctx context.Context, request interface{}, handler grpc.UnaryHandler) (interface{}, error) {
 
-	requestPath := ci.getHookType(serviceType)
+	runtimeHookPath, runtimeResourceType := ci.getRuntimeHookInfo(serviceType)
+	resourceExecutor := resource_executor.NewOnetimeRuntimeResourceExecutor(runtimeResourceType, ci.MetaManager)
+	resourceExecutor.ParseRequest(request)
 
-	if preHookType := requestPath.PreHookType(); preHookType != config.NoneRuntimeHookType {
-		if hookRequest, err := ci.generateHookRequest(request, requestPath); err != nil {
-			ci.dispatcher.Dispatch(ctx, requestPath, hookRequest)
-		} else {
-			klog.Errorf("fail to create the")
-		}
-	}
+	// pre call hook server
+	ci.dispatcher.Dispatch(ctx, runtimeHookPath, config.PreHook, resourceExecutor.GenerateHookRequest())
 
+	// call the backend runtime engine
 	res, err := handler(ctx, request)
-	klog.Infof("%v %v", res, err)
-	// should record the pod infoif
-
-	if postHookType := requestPath.PostHookType(); postHookType != config.NoneRuntimeHookType {
-		if hookRequest, err := ci.generateHookRequest(request, requestPath); err != nil {
-			ci.dispatcher.Dispatch(ctx, requestPath, hookRequest)
-		} else {
-			klog.Infof("fail to create the")
-
-		}
+	if err == nil {
+		klog.Infof("%v %v success", res, err)
+		// store checkpoint info basing request
+		// checkpoint only when response success
+		resourceExecutor.ResourceCheckPoint(res)
+	} else {
+		klog.Errorf("%v %v", res, err)
 	}
+
+	ci.dispatcher.Dispatch(ctx, runtimeHookPath, config.PostHook, resourceExecutor.GenerateHookRequest())
+
 	return res, err
 }
 
@@ -140,5 +66,4 @@ func (ci *CriInterceptor) Init(sockPath string) {
 		return
 	}
 	ci.runtimeClient = runtimeapi.NewRuntimeServiceClient(conn)
-
 }

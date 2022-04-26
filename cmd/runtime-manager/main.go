@@ -10,9 +10,7 @@ import (
 
 func main() {
 	fmt.Printf("Enter the runtime manager\n")
-
 	interceptor.NewCriInterceptor(&dispatcher.RuntimeDispatcher{}).Setup3()
-
 	/*
 		client, _ := tools.NewRuntimeHookClient(pkg..DefaultRpcServerPath)
 		go client.Start()

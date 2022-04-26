@@ -8,7 +8,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-//RuntimeDispatcher is
+// RuntimeDispatcher is
 type RuntimeDispatcher struct {
 	cm          *utils.HookServerClientManager
 	hookManager *config.Manager
@@ -24,58 +24,60 @@ func (rd *RuntimeDispatcher) genHookServerRequest() {
 }
 
 func (rd *RuntimeDispatcher) dispatchInternal(ctx context.Context, hookType config.RuntimeHookType,
-	client *utils.RuntimeHookClient, request interface{}) error {
+	client *utils.RuntimeHookClient, request interface{}) (response interface{}, err error) {
 
 	switch hookType {
 	case config.PreRunPodSandbox:
-		rsp, err := client.PreRunPodSandboxHook(ctx, request.(*v1alpha1.RunPodSandboxHookRequest))
+		response, err = client.PreRunPodSandboxHook(ctx, request.(*v1alpha1.RunPodSandboxHookRequest))
 		if err != nil {
-			klog.Infof("show error info: %v %v", rsp, err)
+			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PreStartContainer:
-		rsp, err := client.PreStartContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
+		response, err = client.PreStartContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
-			klog.Infof("show error info: %v %v", rsp, err)
+			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PreUpdateContainerResources:
-		rsp, err := client.PreUpdateContainerResourcesHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
+		response, err = client.PreUpdateContainerResourcesHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
-			klog.Infof("show error info: %v %v", rsp, err)
+			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PostStartContainer:
-		rsp, err := client.PostStartContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
+		response, err = client.PostStartContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
-			klog.Infof("show error info: %v %v", rsp, err)
+			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PostStopContainer:
-		rsp, err := client.PostStopContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
+		response, err = client.PostStopContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
-			klog.Infof("show error info: %v %v", rsp, err)
+			klog.Infof("show error info: %v %v", response, err)
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (rd *RuntimeDispatcher) Dispatch(ctx context.Context, runtimeRequestPath config.RuntimeRequestPath,
-	request interface{}) error {
-
+	stage config.RuntimeHookStage, request interface{}) (interface{}, error) {
 	hookServers := rd.hookManager.GetAllHook()
 	for _, hookServer := range hookServers {
 		for _, hookType := range hookServer.RuntimeHooks {
 			if !hookType.OccursOn(runtimeRequestPath) {
 				continue
 			}
-
+			if hookType.HookStage() != stage {
+				continue
+			}
 			client, err := rd.cm.RuntimeHookClient(utils.HookServerPath{
 				Path: hookServer.RemoteEndpoint,
 			})
-
 			if err != nil {
 				klog.Infof("fail to create the client %v", err)
 				continue
 			}
-			rd.dispatchInternal(ctx, hookType, client, request)
+			response, err := rd.dispatchInternal(ctx, hookType, client, request)
+			// TODO: multi
+			klog.V(6).Infof("%v %v", response, err)
 		}
 	}
-	return nil
+	return nil, nil
 }

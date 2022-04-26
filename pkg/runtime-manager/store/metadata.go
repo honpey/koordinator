@@ -1,4 +1,4 @@
-package metadata
+package store
 
 import "github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 

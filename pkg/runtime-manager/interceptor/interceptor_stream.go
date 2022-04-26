@@ -18,7 +18,7 @@ import (
 	"os"
 
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/dispatcher"
-	meta "github.com/koordinator-sh/koordinator/pkg/runtime-manager/metadata"
+	meta "github.com/koordinator-sh/koordinator/pkg/runtime-manager/store"
 )
 
 const (
@@ -241,7 +241,7 @@ func (ci *CriInterceptor) HandleInternal(srv interface{}, proxyStream grpc.Serve
 	preHookType := hookPath.PreHookType()
 	if preHookType != config.NoneRuntimeHookType {
 		// slo-agent & runtime-manager
-		ci.dispatcher.Dispatch(proxyStream.Context(), hookPath, frame)
+		ci.dispatcher.Dispatch(proxyStream.Context(), hookPath, config.PreHook, frame)
 	}
 	// ===> serve
 	// fram
@@ -273,7 +273,7 @@ func (ci *CriInterceptor) HandleInternal(srv interface{}, proxyStream grpc.Serve
 
 	postHookType := hookPath.PostHookType()
 	if postHookType != config.NoneRuntimeHookType {
-		ci.dispatcher.Dispatch(proxyStream.Context(), hookPath, frame)
+		ci.dispatcher.Dispatch(proxyStream.Context(), hookPath, config.PostHook, frame)
 	}
 	// =====================================
 	// send message to client(containerd)

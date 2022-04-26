@@ -1,8 +1,7 @@
-package metadata
+package store
 
 import (
 	"encoding/json"
-	"github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 )
 
 // MetaManager no need to store info in memory
@@ -31,7 +30,7 @@ func (m *MetaManager) WritePodSandboxCheckpoint(pUID string, pod *PodSandboxChec
 }
 
 // WriteContainerCheckpoint returns
-func (m *MetaManager) WriteContainerCheckpoint(cUID string, container *v1alpha1.ContainerResourceHookRequest) error {
+func (m *MetaManager) WriteContainerCheckpoint(cUID string, container *ContainerCheckpoint) error {
 	data, err := json.Marshal(container)
 	if err != nil {
 		return err
