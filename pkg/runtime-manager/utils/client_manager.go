@@ -1,18 +1,13 @@
 package utils
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/groupcache/lru"
 	"github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/klog/v2"
-	"net"
-	"net/http"
-	"time"
-
-	"github.com/golang/groupcache/lru"
 )
 
 type HookServerClientManager struct {
@@ -23,12 +18,13 @@ const (
 	defaultCacheSize = 200
 )
 
+// NewClientManager
 // TODO: garbage client gc
-func NewClientManager() (*HookServerClientManager, error) {
+func NewClientManager() *HookServerClientManager {
 	cache := lru.New(defaultCacheSize)
 	return &HookServerClientManager{
 		cache: cache,
-	}, nil
+	}
 }
 
 type HookServerPath struct {
@@ -41,6 +37,7 @@ type RuntimeHookClient struct {
 	v1alpha1.RuntimeHookServiceClient
 }
 
+/*
 func (cm *HookServerClientManager) HookClient(serverPath HookServerPath) (*http.Client, error) {
 	cacheKey, err := json.Marshal(serverPath)
 	if err != nil {
@@ -61,6 +58,7 @@ func (cm *HookServerClientManager) HookClient(serverPath HookServerPath) (*http.
 	cm.cache.Add(string(cacheKey), client)
 	return client, nil
 }
+*/
 
 func NewRuntimeHookClient(sockPath string) (*RuntimeHookClient, error) {
 	client := &RuntimeHookClient{

@@ -4,10 +4,11 @@ import (
 	bolt "go.etcd.io/bbolt"
 	"k8s.io/klog/v2"
 	"os"
+	"path/filepath"
 )
 
 const (
-	runtimeDbPath = "/dev/runtime-manager/podmeta.db"
+	runtimeDbPath = "/dev/runtime-manager/checkpoint.db"
 )
 
 var (
@@ -26,6 +27,21 @@ func NewBoltDB() *BoltDB {
 func (m *BoltDB) Init() {
 	options := *bolt.DefaultOptions
 	options.Timeout = 0
+
+	if _, err := os.Stat(filepath.Dir(runtimeDbPath)); os.IsNotExist(err) {
+		if err := os.MkdirAll(filepath.Dir(runtimeDbPath), 0755); err != nil {
+			klog.Errorf("fail to mkdir for %v", filepath.Dir(runtimeDbPath), err)
+			os.Exit(1)
+		}
+		klog.Infof("create db dir %v", filepath.Dir(runtimeDbPath))
+	}
+	if _, err := os.Stat(runtimeDbPath); os.IsNotExist(err) {
+		if _, err = os.Create(runtimeDbPath); err != nil {
+			klog.Errorf("fail to crate %v %v", runtimeDbPath, err)
+			os.Exit(1)
+		}
+		klog.Infof("create db file %v", runtimeDbPath)
+	}
 
 	db, err := bolt.Open(runtimeDbPath, 0644, &options)
 	if err != nil {

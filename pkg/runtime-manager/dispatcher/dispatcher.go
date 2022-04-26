@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/config"
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/utils"
@@ -14,9 +15,10 @@ type RuntimeDispatcher struct {
 	hookManager *config.Manager
 }
 
-func NewRuntimeDispatcher(cm *utils.HookServerClientManager) *RuntimeDispatcher {
+func NewRuntimeDispatcher(cm *utils.HookServerClientManager, hookManager *config.Manager) *RuntimeDispatcher {
 	return &RuntimeDispatcher{
-		cm: cm,
+		cm:          cm,
+		hookManager: hookManager,
 	}
 }
 
@@ -28,26 +30,36 @@ func (rd *RuntimeDispatcher) dispatchInternal(ctx context.Context, hookType conf
 
 	switch hookType {
 	case config.PreRunPodSandbox:
+		data, _ := json.Marshal(request.(*v1alpha1.RunPodSandboxHookRequest))
+		klog.Infof("runPodSandbox request %v", string(data))
 		response, err = client.PreRunPodSandboxHook(ctx, request.(*v1alpha1.RunPodSandboxHookRequest))
 		if err != nil {
 			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PreStartContainer:
+		data, _ := json.Marshal(request.(*v1alpha1.ContainerResourceHookRequest))
+		klog.Infof("preStartContainer request %v", string(data))
 		response, err = client.PreStartContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
 			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PreUpdateContainerResources:
+		data, _ := json.Marshal(request.(*v1alpha1.ContainerResourceHookRequest))
+		klog.Infof("preUpdateContainer request %v", string(data))
 		response, err = client.PreUpdateContainerResourcesHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
 			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PostStartContainer:
+		data, _ := json.Marshal(request.(*v1alpha1.ContainerResourceHookRequest))
+		klog.Infof("postStartContainer request %v", string(data))
 		response, err = client.PostStartContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
 			klog.Infof("show error info: %v %v", response, err)
 		}
 	case config.PostStopContainer:
+		data, _ := json.Marshal(request.(*v1alpha1.ContainerResourceHookRequest))
+		klog.Infof("postStopContainer request %v", string(data))
 		response, err = client.PostStopContainerHook(ctx, request.(*v1alpha1.ContainerResourceHookRequest))
 		if err != nil {
 			klog.Infof("show error info: %v %v", response, err)

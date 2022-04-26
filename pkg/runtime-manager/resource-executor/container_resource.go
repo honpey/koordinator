@@ -1,9 +1,13 @@
 package resource_executor
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/koordinator-sh/koordinator/apis/runtime/v1alpha1"
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/store"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
+	"k8s.io/klog/v2"
 )
 
 type ContainerResourceExecutor struct {
@@ -15,8 +19,14 @@ type ContainerResourceExecutor struct {
 	PodResources         *v1alpha1.LinuxContainerResources
 }
 
+func (c *ContainerResourceExecutor) String() string {
+	return fmt.Sprintf("pod(%v/%v)container(%v)",
+		c.PodMeta.Name, c.PodMeta.Uid,
+		c.ContainerMata.Name)
+}
+
 func (c *ContainerResourceExecutor) GenerateResourceCheckpoint() interface{} {
-	return store.ContainerCheckpoint{
+	return &store.ContainerCheckpoint{
 		PodMeta:              c.PodMeta,
 		ContainerMata:        c.ContainerMata,
 		ContainerAnnotations: c.ContainerAnnotations,
@@ -26,7 +36,7 @@ func (c *ContainerResourceExecutor) GenerateResourceCheckpoint() interface{} {
 }
 
 func (c *ContainerResourceExecutor) GenerateHookRequest() interface{} {
-	return v1alpha1.ContainerResourceHookRequest{
+	return &v1alpha1.ContainerResourceHookRequest{
 		PodMeta:              c.PodMeta,
 		ContainerMata:        c.ContainerMata,
 		ContainerAnnotations: c.ContainerAnnotations,
@@ -45,6 +55,7 @@ func (c *ContainerResourceExecutor) updateByCheckPoint(containerID string) error
 	c.ContainerMata = containerCheckPoint.ContainerMata
 	c.ContainerResources = containerCheckPoint.ContainerResources
 	c.ContainerAnnotations = containerCheckPoint.ContainerAnnotations
+	klog.Infof("get container info successful %v", containerID)
 	return nil
 }
 
@@ -63,20 +74,28 @@ func (c *ContainerResourceExecutor) ParseRequest(request interface{}) error {
 
 		// construct the container info
 		c.ContainerMata = &v1alpha1.ContainerMetadata{
-			Name: createContainerRequest.GetConfig().GetMetadata().GetName(),
-
+			Name:    createContainerRequest.GetConfig().GetMetadata().GetName(),
 			Attempt: createContainerRequest.GetConfig().GetMetadata().GetAttempt(),
 		}
 		c.ContainerAnnotations = createContainerRequest.GetConfig().GetAnnotations()
 		c.ContainerResources = transferResource(createContainerRequest.GetConfig().GetLinux().GetResources())
+		klog.Infof("success parse container info %v during container create", c)
 	case *runtimeapi.StartContainerRequest:
 		startContainerRequest := request.(*runtimeapi.StartContainerRequest)
 		containerID := startContainerRequest.ContainerId
-		return c.updateByCheckPoint(containerID)
+		err := c.updateByCheckPoint(containerID)
+		if err != nil {
+			return err
+		}
+		klog.Infof("success parse container Info %v during container start", c)
 	case *runtimeapi.UpdateContainerResourcesRequest:
 		updateContainerResourcesRequest := request.(*runtimeapi.UpdateContainerResourcesRequest)
 		containerID := updateContainerResourcesRequest.ContainerId
-		return c.updateByCheckPoint(containerID)
+		err := c.updateByCheckPoint(containerID)
+		if err != nil {
+			return err
+		}
+		klog.Infof("success parse container Info %v during container update resource", c)
 	}
 	return nil
 }
@@ -87,6 +106,15 @@ func (c *ContainerResourceExecutor) ResourceCheckPoint(response interface{}) err
 	if !ok {
 		return nil
 	}
-	return c.store.WriteContainerCheckpoint(createContainer.ContainerId,
-		c.GenerateResourceCheckpoint().(*store.ContainerCheckpoint))
+	containerCheckpoint := c.GenerateResourceCheckpoint().(*store.ContainerCheckpoint)
+	data, _ := json.Marshal(containerCheckpoint)
+
+	err := c.store.WriteContainerCheckpoint(createContainer.ContainerId, containerCheckpoint)
+	if err != nil {
+		return err
+	}
+	klog.Infof("success to checkpoint container level info %v %v",
+		createContainer.ContainerId, string(data))
+	return nil
+
 }

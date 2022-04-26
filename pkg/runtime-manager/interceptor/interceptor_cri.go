@@ -17,6 +17,9 @@ func (ci *CriInterceptor) getRuntimeHookInfo(serviceType RuntimeServiceType) (co
 	switch serviceType {
 	case RunPodSandbox:
 		return config.RunPodSandbox, resource_executor.RuntimePodResource
+	case CreateContainer:
+		// No Nook point in create container, but we need store the container info during container create
+		return config.NoneRuntimeHookPath, resource_executor.RuntimeContainerResource
 	case StartContainer:
 		return config.StartContainer, resource_executor.RuntimeContainerResource
 	case StopContainer:
@@ -32,7 +35,10 @@ func (ci *CriInterceptor) interceptRuntimeRequest(serviceType RuntimeServiceType
 
 	runtimeHookPath, runtimeResourceType := ci.getRuntimeHookInfo(serviceType)
 	resourceExecutor := resource_executor.NewOnetimeRuntimeResourceExecutor(runtimeResourceType, ci.MetaManager)
-	resourceExecutor.ParseRequest(request)
+
+	if err := resourceExecutor.ParseRequest(request); err != nil {
+		klog.Errorf("fail to parse request %v %v", request, err)
+	}
 
 	// pre call hook server
 	ci.dispatcher.Dispatch(ctx, runtimeHookPath, config.PreHook, resourceExecutor.GenerateHookRequest())
@@ -43,11 +49,14 @@ func (ci *CriInterceptor) interceptRuntimeRequest(serviceType RuntimeServiceType
 		klog.Infof("%v %v success", res, err)
 		// store checkpoint info basing request
 		// checkpoint only when response success
-		resourceExecutor.ResourceCheckPoint(res)
+		if err := resourceExecutor.ResourceCheckPoint(res); err != nil {
+			klog.Errorf("fail to checkpoint %v", err)
+		}
 	} else {
 		klog.Errorf("%v %v", res, err)
 	}
 
+	// post call hook server
 	ci.dispatcher.Dispatch(ctx, runtimeHookPath, config.PostHook, resourceExecutor.GenerateHookRequest())
 
 	return res, err

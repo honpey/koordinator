@@ -34,7 +34,11 @@ type RuntimeHookConfigItem struct {
 }
 
 func (m *Manager) GetAllHook() []*RuntimeHookConfig {
-	return []*RuntimeHookConfig{}
+	var runtimeConfigs []*RuntimeHookConfig
+	for _, config := range m.configs {
+		runtimeConfigs = append(runtimeConfigs, config.RuntimeHookConfig)
+	}
+	return runtimeConfigs
 }
 
 func (m *Manager) getAllRegisteredFiles() []string {
