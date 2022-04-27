@@ -17,9 +17,6 @@ func main() {
 	config.Setup()
 	interceptor.NewCriInterceptor(dispatcher.NewRuntimeDispatcher(
 		utils.NewClientManager(), config)).Setup()
-	/*
-		client, _ := tools.NewRuntimeHookClient(pkg..DefaultRpcServerPath)
-		go client.Start() */
 	for {
 		time.Sleep(100 * time.Minute)
 	}

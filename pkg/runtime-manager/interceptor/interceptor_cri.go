@@ -2,15 +2,42 @@ package interceptor
 
 import (
 	"context"
+	"fmt"
+	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/dispatcher"
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/resource-executor"
+	meta "github.com/koordinator-sh/koordinator/pkg/runtime-manager/store"
 	"k8s.io/klog/v2"
 	"net"
+	"os"
 	"time"
 
 	"github.com/koordinator-sh/koordinator/pkg/runtime-manager/config"
 	"google.golang.org/grpc"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1"
 )
+
+const (
+	defaultRuntimeSocketPath = "/tmp/socket.sock"
+)
+
+type CriInterceptor struct {
+	dispatcher    *dispatcher.RuntimeDispatcher
+	backendConn   *grpc.ClientConn
+	runtimeClient runtimeapi.RuntimeServiceClient
+	MetaManager   *meta.MetaManager
+}
+
+func NewCriInterceptor(dispatcher *dispatcher.RuntimeDispatcher) *CriInterceptor {
+	criInterceptor := &CriInterceptor{
+		dispatcher:  dispatcher,
+		MetaManager: meta.NewMetaManager(),
+	}
+	return criInterceptor
+}
+
+func (ci *CriInterceptor) Name() string {
+	return "CRI"
+}
 
 func (ci *CriInterceptor) getRuntimeHookInfo(serviceType RuntimeServiceType) (config.RuntimeRequestPath,
 	resource_executor.RuntimeResourceType) {
@@ -75,4 +102,18 @@ func (ci *CriInterceptor) Init(sockPath string) {
 		return
 	}
 	ci.runtimeClient = runtimeapi.NewRuntimeServiceClient(conn)
+}
+
+func (ci *CriInterceptor) Setup() error {
+	os.Remove(defaultRuntimeSocketPath)
+	lis, err := net.Listen("unix", defaultRuntimeSocketPath)
+	if err != nil {
+		fmt.Printf("fail to create the lis %v", err)
+		return err
+	}
+	ci.Init("/run/containerd/containerd.sock")
+	grpcServer := grpc.NewServer()
+	runtimeapi.RegisterRuntimeServiceServer(grpcServer, ci)
+	err = grpcServer.Serve(lis)
+	return nil
 }

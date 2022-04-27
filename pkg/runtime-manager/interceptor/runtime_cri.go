@@ -233,29 +233,6 @@ func (ci *CriInterceptor) PortForward(ctx context.Context, in *runtimeapi.PortFo
 	return rsp.(*runtimeapi.PortForwardResponse), err
 }
 
-/*
-func (ci *CriInterceptor) PodSandboxStats(ctx context.Context, in *runtimeapi.PodSandboxStatsRequest) (*runtimeapi.PodSandboxStatsResponse, error) {
-	rsp, err := ci.interceptRuntimeRequest(PodSandboxStats, ctx, in,
-		func(ctx context.Context, req interface{}) (interface{}, error) {
-			return ci.runtimeClient.PodSandboxStats(ctx, req.(*runtimeapi.PodSandboxStatsRequest))
-		})
-	if err != nil {
-		return nil, err
-	}
-	return rsp.(*runtimeapi.PodSandboxStatsResponse), err
-}
-
-func (ci *CriInterceptor) ListPodSandboxStats(ctx context.Context, in *runtimeapi.ListPodSandboxStatsRequest) (*runtimeapi.ListPodSandboxStatsResponse, error) {
-	rsp, err := ci.interceptRuntimeRequest(ListPodSandbox, ctx, in,
-		func(ctx context.Context, req interface{}) (interface{}, error) {
-			return ci.runtimeClient.ListPodSandboxStats(ctx, req.(*runtimeapi.ListPodSandboxStatsRequest))
-		})
-	if err != nil {
-		return nil, err
-	}
-	return rsp.(*runtimeapi.ListPodSandboxStatsResponse), err
-}
-*/
 func (ci *CriInterceptor) UpdateRuntimeConfig(ctx context.Context, in *runtimeapi.UpdateRuntimeConfigRequest) (*runtimeapi.UpdateRuntimeConfigResponse, error) {
 	rsp, err := ci.interceptRuntimeRequest(UpdateRuntimeConfig, ctx, in,
 		func(ctx context.Context, req interface{}) (interface{}, error) {
