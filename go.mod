@@ -28,8 +28,8 @@ require (
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.28.1
-	gorm.io/driver/sqlite v1.3.6
-	gorm.io/gorm v1.23.10
+	gorm.io/driver/sqlite v1.4.2
+	gorm.io/gorm v1.24.0
 	k8s.io/api v0.22.6
 	k8s.io/apimachinery v0.22.6
 	k8s.io/apiserver v0.22.6
@@ -115,7 +115,7 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/mattn/go-sqlite3 v1.14.12 // indirect
+	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible // indirect
 	github.com/moby/spdystream v0.2.0 // indirect
